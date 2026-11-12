@@ -22,7 +22,7 @@ for group in ["train", "val", "test"]:
     print("Finished group:", group)
 
 # 3. Save everything as a table you can open in Excel or Numbers
-with open("dataset_stats.csv", "w", newline="") as f:
+with open("outputs/dataset_stats.csv", "w", newline="") as f:
     writer = csv.writer(f)
     writer.writerow(["name", "group", "slices", "slice_thickness_mm", "pancreas_mm3", "tumor_mm3"])
     writer.writerows(rows)
