@@ -13,25 +13,29 @@ def block(channels_in, channels_out):
     )
 
 class UNet(nn.Module):
-    def __init__(self):
+    # width = how many filters the first level has. 16 = small model, 32 = big model.
+    # Each level down has twice as many filters as the one above it.
+    def __init__(self, width=16):
         super().__init__()
+        w = width
+
         # Left side of the U: going down
-        self.down1 = block(1, 16)
-        self.down2 = block(16, 32)
-        self.down3 = block(32, 64)
-        self.bottom = block(64, 128)
+        self.down1 = block(1, w)
+        self.down2 = block(w, w * 2)
+        self.down3 = block(w * 2, w * 4)
+        self.bottom = block(w * 4, w * 8)
         self.shrink = nn.MaxPool2d(2)
 
         # Right side of the U: going back up
-        self.grow3 = nn.ConvTranspose2d(128, 64, kernel_size=2, stride=2)
-        self.up3 = block(128, 64)
-        self.grow2 = nn.ConvTranspose2d(64, 32, kernel_size=2, stride=2)
-        self.up2 = block(64, 32)
-        self.grow1 = nn.ConvTranspose2d(32, 16, kernel_size=2, stride=2)
-        self.up1 = block(32, 16)
+        self.grow3 = nn.ConvTranspose2d(w * 8, w * 4, kernel_size=2, stride=2)
+        self.up3 = block(w * 8, w * 4)
+        self.grow2 = nn.ConvTranspose2d(w * 4, w * 2, kernel_size=2, stride=2)
+        self.up2 = block(w * 4, w * 2)
+        self.grow1 = nn.ConvTranspose2d(w * 2, w, kernel_size=2, stride=2)
+        self.up1 = block(w * 2, w)
 
         # Last layer: one number per pixel, "how sure am I this is pancreas?"
-        self.final = nn.Conv2d(16, 1, kernel_size=1)
+        self.final = nn.Conv2d(w, 1, kernel_size=1)
 
     def forward(self, x):
         d1 = self.down1(x)                    # 256x256
@@ -47,9 +51,9 @@ class UNet(nn.Module):
 
 # This part only runs when you start this file directly
 if __name__ == "__main__":
-    model = UNet()
-    fake_slice = torch.randn(1, 1, 256, 256)
-    answer = model(fake_slice)
-    print("Goes in: ", tuple(fake_slice.shape))
-    print("Comes out:", tuple(answer.shape))
-    print("Weights in the model:", sum(p.numel() for p in model.parameters()))
+    for width in [16, 32]:
+        model = UNet(width=width)
+        fake_slice = torch.randn(1, 1, 256, 256)
+        answer = model(fake_slice)
+        print("Width", width, " goes in:", tuple(fake_slice.shape), " comes out:", tuple(answer.shape),
+              " weights:", sum(p.numel() for p in model.parameters()))

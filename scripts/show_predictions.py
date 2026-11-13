@@ -5,7 +5,7 @@ from unet import UNet
 
 # 1. Load your trained model
 model = UNet()
-model.load_state_dict(torch.load("models/unet_best.pt", map_location="cpu"))
+model.load_state_dict(torch.load("models/unet_small.pt", map_location="cpu"))
 model.eval()
 
 # 2. Load validation slices: patients the model never trained on

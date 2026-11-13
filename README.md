@@ -24,8 +24,9 @@ All scores are on the 42 validation patients. The 42 test patients have not been
 |---|---|---|---|---|
 | 1 | 2026-11-13 | Baseline: hand-written 2D U-Net (483,153 weights), 5 epochs, 256×256 slices | Average Dice per patient in 3D: 0.639. Best 0.876, worst 0.209. 7 of 42 patients below 0.5 | Works on most patients. The failures are misses: in 5 of the 7 failing patients the model coloured under 40% of the true pancreas |
 | 2 | 2026-11-13 | Hypothesis: the model is too cautious. Lowered the decision bar from 0.5 down to 0.1 | Average Dice 0.640 at 0.1 against 0.639 at 0.5. Still 7 failing patients | Hypothesis rejected. The model is confident where it is wrong, so changing the bar cannot fix it. The model itself has to improve |
+| 3 | 2026-11-13 | Hypothesis: the model is too small. Trained the same U-Net with twice the filters per level (1,927,841 weights, four times as many). Same data, 5 epochs, same settings | Average Dice 0.633 against 0.639. Middle 0.695 against 0.658. Worst 0.064 against 0.209. Still 7 failing patients, and 6 of them are the same patients | Hypothesis rejected. A bigger model does not help, and the same patients fail in both, so the problem is in those scans and in what a 2D slice model can see. One training run each, so a gap of 0.006 is too small to call either model the winner |
 
-Files: `outputs/train_log.csv`, `outputs/val_results.csv`, `outputs/threshold_results.csv`.
+Files: `outputs/train_log_unet_small.csv`, `outputs/val_results_unet_small.csv`, `outputs/threshold_results.csv`, `outputs/train_log_unet_big.csv`, `outputs/val_results_unet_big.csv`.
 
 ## Folder layout
 
@@ -56,10 +57,10 @@ python scripts/view_scan.py
 | `dataset_stats.py` | Measures pancreas and tumor volume for every patient. Saves `outputs/dataset_stats.csv` |
 | `preprocess_demo.py` | Shows one slice before and after preparation: window, normalise, shrink |
 | `make_slices.py` | Turns the 3D scans into a 2D slice dataset for training and validation. Saves `data/slices/` |
-| `unet.py` | The 2D U-Net model, written by hand |
-| `train.py` | Trains the U-Net. Saves the best model to `models/` and a log to `outputs/train_log.csv` |
+| `unet.py` | The 2D U-Net model, written by hand. `width` sets its size: 16 = small, 32 = big |
+| `train.py` | Trains the U-Net. Run as `python scripts/train.py NAME WIDTH`. Saves the best model to `models/NAME.pt` and a log to `outputs/train_log_NAME.csv` |
 | `show_predictions.py` | Draws the model's outline next to the doctor's on four validation patients |
-| `evaluate.py` | Scores every validation patient in full 3D. Saves `outputs/val_results.csv` |
+| `evaluate.py` | Run as `python scripts/evaluate.py NAME WIDTH`. Scores every validation patient in full 3D. Saves `outputs/val_results_NAME.csv` |
 | `threshold_test.py` | Experiment 2: scores the model at seven different decision bars |
 
 ## Dataset

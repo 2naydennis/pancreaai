@@ -1,8 +1,14 @@
 import os
+import sys
 import time
 import numpy as np
 import torch
 from unet import UNet
+
+# Two settings come from the command line, for example:
+#   python scripts/train.py unet_big 32
+NAME = sys.argv[1]          # a name for this model, used in the saved file names
+WIDTH = int(sys.argv[2])    # model size: 16 = small, 32 = big
 
 EPOCHS = 5
 BATCH = 16
@@ -34,11 +40,12 @@ def loss_fn(guess, truth):
 
 # 3. The model, and the optimizer that nudges its weights
 torch.manual_seed(0)
-model = UNet().to(device)
+model = UNet(width=WIDTH).to(device)
 optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
+print("Model:", NAME, " width:", WIDTH, " weights:", sum(p.numel() for p in model.parameters()), flush=True)
 
 os.makedirs("models", exist_ok=True)
-log = open("outputs/train_log.csv", "w")
+log = open("outputs/train_log_" + NAME + ".csv", "w")
 log.write("epoch,train_loss,val_dice,minutes\n")
 best_dice = 0
 
@@ -58,7 +65,7 @@ for epoch in range(1, EPOCHS + 1):
         loss = loss_fn(guess, y)     # 2. measure how wrong it is
         optimizer.zero_grad()
         loss.backward()              # 3. work out which way to move each weight
-        optimizer.step()             # 4. nudge all 483,153 weights
+        optimizer.step()             # 4. nudge every weight a little
 
         loss_sum += loss.item()
         if n % 100 == 0:
@@ -85,7 +92,7 @@ for epoch in range(1, EPOCHS + 1):
     # 6. Keep the best model so far
     if val_dice > best_dice:
         best_dice = val_dice
-        torch.save(model.state_dict(), "models/unet_best.pt")
+        torch.save(model.state_dict(), "models/" + NAME + ".pt")
         print("  saved new best model", flush=True)
 
 log.close()

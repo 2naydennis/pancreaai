@@ -1,16 +1,22 @@
 import csv
+import sys
 import json
 import numpy as np
 import torch
 import SimpleITK as sitk
 from unet import UNet
 
+# Which model to score comes from the command line, for example:
+#   python scripts/evaluate.py unet_big 32
+NAME = sys.argv[1]          # the model's name, as used in train.py
+WIDTH = int(sys.argv[2])    # its size: 16 = small, 32 = big
+
 folder = "data/Task07_Pancreas"
 device = "mps" if torch.backends.mps.is_available() else "cpu"
 
 # 1. Load your trained model
-model = UNet().to(device)
-model.load_state_dict(torch.load("models/unet_best.pt", map_location=device))
+model = UNet(width=WIDTH).to(device)
+model.load_state_dict(torch.load("models/" + NAME + ".pt", map_location=device))
 model.eval()
 
 with open("splits.json") as f:
@@ -46,13 +52,14 @@ for name in splits["val"]:
     print(name, " Dice", round(float(dice), 3), flush=True)
 
 # 6. Save one row per patient
-with open("outputs/val_results.csv", "w", newline="") as f:
+with open("outputs/val_results_" + NAME + ".csv", "w", newline="") as f:
     writer = csv.writer(f)
     writer.writerow(["name", "dice", "true_voxels", "guessed_voxels", "false_alarm_voxels"])
     writer.writerows(rows)
 
 # 7. Summary
 scores = sorted(row[1] for row in rows)
+print("Model:", NAME)
 print("Patients scored:", len(scores))
 print("Average Dice:", round(sum(scores) / len(scores), 3))
 print("Middle Dice: ", scores[len(scores) // 2])

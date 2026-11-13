@@ -12,7 +12,7 @@ device = "mps" if torch.backends.mps.is_available() else "cpu"
 bars = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7]
 
 model = UNet().to(device)
-model.load_state_dict(torch.load("models/unet_best.pt", map_location=device))
+model.load_state_dict(torch.load("models/unet_small.pt", map_location=device))
 model.eval()
 
 with open("splits.json") as f:
