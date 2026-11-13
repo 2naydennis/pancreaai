@@ -58,10 +58,11 @@ python scripts/view_scan.py
 | `dataset_stats.py` | Measures pancreas and tumor volume for every patient. Saves `outputs/dataset_stats.csv` |
 | `preprocess_demo.py` | Shows one slice before and after preparation: window, normalise, shrink |
 | `make_slices.py` | Turns the 3D scans into a 2D slice dataset for training and validation. Saves `data/slices/` |
-| `unet.py` | The 2D U-Net model, written by hand. `width` sets its size: 16 = small, 32 = big |
-| `train.py` | Trains the U-Net. Run as `python scripts/train.py NAME WIDTH`. Saves the best model to `models/NAME.pt` and a log to `outputs/train_log_NAME.csv` |
+| `make_slices_3.py` | Same slices as `make_slices.py`, but each example also holds the slice below and the slice above. Saves `data/slices/train3.npz` and `val3.npz` |
+| `unet.py` | The 2D U-Net model, written by hand. `width` sets its size: 16 = small, 32 = big. `slices` sets how many CT slices it sees at once: 1 or 3 |
+| `train.py` | Trains the U-Net. Run as `python scripts/train.py NAME WIDTH` or, for a 3-slice model, `python scripts/train.py NAME WIDTH 3`. Saves the best model to `models/NAME.pt` and a log to `outputs/train_log_NAME.csv` |
 | `show_predictions.py` | Draws the model's outline next to the doctor's on four validation patients |
-| `evaluate.py` | Run as `python scripts/evaluate.py NAME WIDTH`. Scores every validation patient in full 3D. Saves `outputs/val_results_NAME.csv` |
+| `evaluate.py` | Run as `python scripts/evaluate.py NAME WIDTH` (add ` 3` for a 3-slice model). Scores every validation patient in full 3D. Saves `outputs/val_results_NAME.csv` |
 | `threshold_test.py` | Experiment 2: scores the model at seven different decision bars |
 | `show_failures.py` | Experiment 4: draws the six patients that fail with both models. Saves `outputs/failures.png` |
 
