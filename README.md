@@ -10,11 +10,22 @@ A student research project: deep learning models that find and outline the pancr
 |---|---|---|
 | 1 | Foundations: environment, CT basics, how a model learns | Done |
 | 2 | Data: download, patient-level split, dataset statistics | Done |
-| 3 | Pancreas segmentation with a U-Net | Next |
+| 3 | Pancreas segmentation with a U-Net | In progress |
 | 4 | Tumor detection | Planned |
 | 5 | Tumor segmentation and volume | Planned |
 | 6 | Research: small tumors, error analysis, comparison with papers | Planned |
 | 7 | Streamlit app | Planned |
+
+## Experiment log
+
+All scores are on the 42 validation patients. The 42 test patients have not been used.
+
+| # | Date | What was tried | Result | Conclusion |
+|---|---|---|---|---|
+| 1 | 2026-11-13 | Baseline: hand-written 2D U-Net (483,153 weights), 5 epochs, 256×256 slices | Average Dice per patient in 3D: 0.639. Best 0.876, worst 0.209. 7 of 42 patients below 0.5 | Works on most patients. The failures are misses: in 5 of the 7 failing patients the model coloured under 40% of the true pancreas |
+| 2 | 2026-11-13 | Hypothesis: the model is too cautious. Lowered the decision bar from 0.5 down to 0.1 | Average Dice 0.640 at 0.1 against 0.639 at 0.5. Still 7 failing patients | Hypothesis rejected. The model is confident where it is wrong, so changing the bar cannot fix it. The model itself has to improve |
+
+Files: `outputs/train_log.csv`, `outputs/val_results.csv`, `outputs/threshold_results.csv`.
 
 ## Folder layout
 
@@ -43,6 +54,13 @@ python scripts/view_scan.py
 | `learn_demo.py` | The smallest possible model: one weight learns the rule "multiply by 3" |
 | `make_split.py` | Splits the 281 patients into training (197), validation (42), and test (42). Saves `splits.json` |
 | `dataset_stats.py` | Measures pancreas and tumor volume for every patient. Saves `outputs/dataset_stats.csv` |
+| `preprocess_demo.py` | Shows one slice before and after preparation: window, normalise, shrink |
+| `make_slices.py` | Turns the 3D scans into a 2D slice dataset for training and validation. Saves `data/slices/` |
+| `unet.py` | The 2D U-Net model, written by hand |
+| `train.py` | Trains the U-Net. Saves the best model to `models/` and a log to `outputs/train_log.csv` |
+| `show_predictions.py` | Draws the model's outline next to the doctor's on four validation patients |
+| `evaluate.py` | Scores every validation patient in full 3D. Saves `outputs/val_results.csv` |
+| `threshold_test.py` | Experiment 2: scores the model at seven different decision bars |
 
 ## Dataset
 
