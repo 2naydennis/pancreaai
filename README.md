@@ -70,6 +70,8 @@ python scripts/view_scan.py
 
 Medical Segmentation Decathlon, Task07 Pancreas: 420 portal-venous CT scans from Memorial Sloan Kettering Cancer Center, with expert masks for pancreas and tumor on 281 of them. Licensed CC-BY-SA 4.0.
 
+The pictures in `outputs/` show slices from this dataset, so they are shared under the same CC-BY-SA 4.0 licence. The scans themselves are not in this repository.
+
 Measured in this project (`outputs/dataset_stats.csv`):
 
 - All 281 labelled patients have a tumor. There are no healthy cases.
