@@ -1,10 +1,7 @@
-# evaluate.py
-# The real exam: scores each of the 42 validation patients in full 3D.
-# Run: python scripts/evaluate.py NAME WIDTH        example: unet_small 16
-#      python scripts/evaluate.py NAME WIDTH 3      example: unet_3slice 16 3
+# evaluate.py: the real exam. It scores each patient as a whole 3D scan.
+# Run: python scripts/evaluate.py NAME WIDTH       (example: unet_small 16)
+#      python scripts/evaluate.py NAME WIDTH 3     (example: unet_3slice 16 3)
 # Saves: outputs/val_results_NAME.csv
-# train.py scores a selection of slices. This script scores whole patients, every slice included,
-# so it is the number we report.
 
 import csv
 import sys
@@ -14,77 +11,63 @@ import torch
 import SimpleITK as sitk
 from unet import UNet
 
-# Which model to score comes from the words you type after the script name.
-NAME = sys.argv[1]          # the model's name, as used in train.py
-WIDTH = int(sys.argv[2])    # its size: 16 = small, 32 = big
-SLICES = int(sys.argv[3]) if len(sys.argv) > 3 else 1    # slices the model sees at once: 1 or 3
+NAME = sys.argv[1]          # The model's name.
+WIDTH = int(sys.argv[2])    # 16 for small, 32 for big.
+SLICES = int(sys.argv[3]) if len(sys.argv) > 3 else 1    # 1 or 3.
 
 folder = "data/Task07_Pancreas"
 device = "mps" if torch.backends.mps.is_available() else "cpu"
 
-# 1. Load your trained model.
-# Build an empty model of the same size, then pour the saved weights into it.
+# Load the trained model.
 model = UNet(width=WIDTH, slices=SLICES).to(device)
 model.load_state_dict(torch.load("models/" + NAME + ".pt", map_location=device))
-model.eval()
+model.eval()    # Exam mode: the model answers but does not learn.
 
 with open("splits.json") as f:
     splits = json.load(f)
 
-# The loop runs once per validation patient and adds one row of results each time.
 rows = []
-for name in splits["val"]:
+for name in splits["val"]:    # Go through each validation patient.
     scan_grid = sitk.GetArrayFromImage(sitk.ReadImage(folder + "/imagesTr/" + name))
     mask_grid = sitk.GetArrayFromImage(sitk.ReadImage(folder + "/labelsTr/" + name))
 
-    # 2. Prepare EVERY slice of this patient: window, normalise, shrink.
-    # This must match the training preparation exactly, or the model will fail.
+    # Get every slice ready, the same way as in training.
     slices = (scan_grid.clip(-100, 240) + 100) / 340
     slices = torch.from_numpy(slices[:, ::2, ::2].astype(np.float32)).unsqueeze(1)
+    truth = mask_grid[:, ::2, ::2] > 0    # The doctor's answer.
 
-    # The doctor's answer, shrunk the same way. True means pancreas or tumor.
-    truth = mask_grid[:, ::2, ::2] > 0
-
-    # For a 3-slice model: glue each slice together with the one below and the one above.
-    # The first and last slice have no neighbour on one side, so they are repeated.
+    # For the 3-slice model, glue each slice to the one below and the one above.
     if SLICES == 3:
         below = torch.cat([slices[:1], slices[:-1]])
         above = torch.cat([slices[1:], slices[-1:]])
         slices = torch.cat([below, slices, above], dim=1)
 
-    # 3. Ask the model for a mask on every slice, 16 slices at a time.
-    # A voxel counts as pancreas when the model is more than 0.5 sure.
+    # The model guesses, 16 slices at a time.
     guess = []
     with torch.no_grad():
         for i in range(0, len(slices), 16):
-            out = torch.sigmoid(model(slices[i:i + 16].to(device))) > 0.5
+            out = torch.sigmoid(model(slices[i:i + 16].to(device))) > 0.5    # More than 0.5 sure means pancreas.
             guess.append(out[:, 0].cpu().numpy())
+    guess = np.concatenate(guess)    # Put the slices back together into one 3D scan.
 
-    # Join the batches into one 3D mask with the same shape as the doctor's.
-    guess = np.concatenate(guess)
-
-    # 4. One Dice score for the whole 3D patient.
-    # overlap counts the voxels where model and doctor both say pancreas.
-    overlap = (guess & truth).sum()
+    # Give the whole patient one score.
+    overlap = (guess & truth).sum()    # Where the model and the doctor both say pancreas.
     dice = 2 * overlap / (guess.sum() + truth.sum())
 
-    # 5. How much did the model colour in slices that have no pancreas at all?
-    # empty is True for those slices. Anything coloured there is a false alarm.
+    # Count what the model coloured on slices that have no pancreas at all.
     empty = ~truth.any(axis=(1, 2))
     false_alarm = guess[empty].sum()
 
     rows.append([name, round(float(dice), 3), int(truth.sum()), int(guess.sum()), int(false_alarm)])
     print(name, " Dice", round(float(dice), 3), flush=True)
 
-# 6. Save one row per patient, under a header row with the column names.
+# Save one row per patient.
 with open("outputs/val_results_" + NAME + ".csv", "w", newline="") as f:
     writer = csv.writer(f)
     writer.writerow(["name", "dice", "true_voxels", "guessed_voxels", "false_alarm_voxels"])
     writer.writerows(rows)
 
-# 7. Summary.
-# row[1] is a patient's Dice score. Sorted from lowest to highest, the first is the worst,
-# the middle one the median, and the last the best.
+# Print a summary, with the scores sorted from low to high.
 scores = sorted(row[1] for row in rows)
 print("Model:", NAME)
 print("Patients scored:", len(scores))
